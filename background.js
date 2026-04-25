@@ -33,72 +33,84 @@ function updateIcon() {
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'translate') {
-    let { text, hoverIndex } = request;
-    if (!text || hoverIndex < 0 || hoverIndex >= text.length) {
-      sendResponse({ result: null });
-      return true;
-    }
-
-    // Trim whitespace and adjust hoverIndex
-    let newText = "";
-    let newHoverIndex = hoverIndex;
-    for (let i = 0; i < text.length; i++) {
-      if (text[i].trim() !== '') {
-        if (i === hoverIndex) newHoverIndex = newText.length;
-        newText += text[i];
-      } else if (i < hoverIndex) {
-        newHoverIndex--;
-      }
-    }
-    text = newText;
-    hoverIndex = newHoverIndex;
-
-    let candidates = [];
-    // Assume input was ABCDEFG and hoverIndex points to D
-    // Forward (e.g. DEFG, DEF, DE)
-    for (let i = Math.min(text.length - 1, hoverIndex + 3); i >= hoverIndex + 1; i--) {
-      candidates.push(text.substring(hoverIndex, i + 1));
-    }
-    // Backward (e.g. ABCD, BCD, CD)
-    for (let i = Math.max(0, hoverIndex - 3); i <= hoverIndex - 1; i++) {
-      candidates.push(text.substring(i, hoverIndex + 1));
-    }
-    // Single (e.g. D)
-    candidates.push(text.substring(hoverIndex, hoverIndex + 1));
-
-    let bestMatch = null;
-    let foundLine = null;
-
-    for (const sub of candidates) {
-      foundLine = findExactMatch(sub);
-      if (foundLine) break;
-    }
-
-    if (!foundLine) {
-      for (const sub of candidates) {
-        foundLine = findPartialMatch(sub);
-        if (foundLine) break;
-      }
-    }
-
-    if (foundLine) {
-      // format example: 備細 备细 [bei4 xi4] /details/particulars/
-      const match = foundLine.match(/^(\S+)\s+(\S+)\s+\[(.*?)\]\s+\/(.*)/);
-      if (match) {
-        bestMatch = {
-          trad: match[1],
-          simp: match[2],
-          pinyin: match[3],
-          english: match[4].replace(/\//g, '; ').trim(),
-          raw: foundLine
-        };
-      }
-    }
-
-    sendResponse({ result: bestMatch });
+    handleTranslate(request, sendResponse);
     return true;
   }
 });
+
+function handleTranslate(request, sendResponse) {
+  const { text, hoverIndex } = request;
+  if (!text || hoverIndex < 0 || hoverIndex >= text.length) {
+    sendResponse({ result: null });
+    return;
+  }
+
+  const { newText, newHoverIndex } = sanitizeInput(text, hoverIndex);
+  const candidates = generateCandidates(newText, newHoverIndex);
+  const foundLine = findMatchingLine(candidates);
+  const bestMatch = foundLine ? parseDictionaryLine(foundLine) : null;
+
+  sendResponse({ result: bestMatch });
+}
+
+function sanitizeInput(text, hoverIndex) {
+  let newText = "";
+  let newHoverIndex = hoverIndex;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i].trim() !== '') {
+      if (i === hoverIndex) newHoverIndex = newText.length;
+      newText += text[i];
+    } else if (i < hoverIndex) {
+      newHoverIndex--;
+    }
+  }
+  return { newText, newHoverIndex };
+}
+
+function generateCandidates(text, hoverIndex) {
+  let candidates = [];
+  // Assume input was ABCDEFG and hoverIndex points to D
+  // Forward (e.g. DEFG, DEF, DE)
+  for (let i = Math.min(text.length - 1, hoverIndex + 3); i >= hoverIndex + 1; i--) {
+    candidates.push(text.substring(hoverIndex, i + 1));
+  }
+  // Backward (e.g. ABCD, BCD, CD)
+  for (let i = Math.max(0, hoverIndex - 3); i <= hoverIndex - 1; i++) {
+    candidates.push(text.substring(i, hoverIndex + 1));
+  }
+  // Single (e.g. D)
+  candidates.push(text.substring(hoverIndex, hoverIndex + 1));
+  return candidates;
+}
+
+function findMatchingLine(candidates) {
+  for (const sub of candidates) {
+    let foundLine = findExactMatch(sub);
+    console.log('exact', sub);
+    if (foundLine) return foundLine;
+  }
+  for (const sub of candidates) {
+    let foundLine = findPartialMatch(sub);
+    console.log('partial', sub);
+    if (foundLine) return foundLine;
+  }
+  return null;
+}
+
+function parseDictionaryLine(line) {
+  // format example: 備細 备细 [bei4 xi4] /details/particulars/
+  const match = line.match(/^(\S+)\s+(\S+)\s+\[(.*?)\]\s+\/(.*)/);
+  if (match) {
+    return {
+      trad: match[1],
+      simp: match[2],
+      pinyin: match[3],
+      english: match[4].replace(/\//g, '; ').trim(),
+      raw: line
+    };
+  }
+  return null;
+}
 
 function extractLine(idx) {
   let lineStart = rawDict.lastIndexOf('\n', idx);
@@ -136,7 +148,15 @@ function findExactMatch(sub) {
     let idx = rawDict.indexOf(' ' + sub + ' [', searchIdx);
     if (idx === -1) break;
     let line = extractLine(idx);
-    if (line) return line;
+    if (line) {
+      let bracketIdx = line.indexOf('[');
+      if (bracketIdx !== -1) {
+        let chinesePart = line.substring(0, bracketIdx);
+        if (chinesePart.includes(' ' + sub + ' ')) {
+          return line;
+        }
+      }
+    }
     searchIdx = idx + 1;
   }
 
