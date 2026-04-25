@@ -54,6 +54,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     hoverIndex = newHoverIndex;
 
     let candidates = [];
+    // Assume input was ABCDEFG and hoverIndex points to D
     // Forward (e.g. DEFG, DEF, DE)
     for (let i = Math.min(text.length - 1, hoverIndex + 3); i >= hoverIndex + 1; i--) {
       candidates.push(text.substring(hoverIndex, i + 1));
@@ -66,21 +67,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     candidates.push(text.substring(hoverIndex, hoverIndex + 1));
 
     let bestMatch = null;
+    let foundLine = null;
 
     for (const sub of candidates) {
-      const foundLine = findLineInDict(sub);
-      if (foundLine) {
-        const match = foundLine.match(/^(\S+)\s+(\S+)\s+\[(.*?)\]\s+\/(.*)/);
-        if (match) {
-          bestMatch = {
-            trad: match[1],
-            simp: match[2],
-            pinyin: match[3],
-            english: match[4].replace(/\//g, '; ').trim(),
-            raw: foundLine
-          };
-          break; // Found the first match in the required order
-        }
+      foundLine = findExactMatch(sub);
+      if (foundLine) break;
+    }
+
+    if (!foundLine) {
+      for (const sub of candidates) {
+        foundLine = findPartialMatch(sub);
+        if (foundLine) break;
+      }
+    }
+
+    if (foundLine) {
+      // format example: 備細 备细 [bei4 xi4] /details/particulars/
+      const match = foundLine.match(/^(\S+)\s+(\S+)\s+\[(.*?)\]\s+\/(.*)/);
+      if (match) {
+        bestMatch = {
+          trad: match[1],
+          simp: match[2],
+          pinyin: match[3],
+          english: match[4].replace(/\//g, '; ').trim(),
+          raw: foundLine
+        };
       }
     }
 
@@ -100,7 +111,39 @@ function extractLine(idx) {
   return rawDict.substring(lineStart, lineEnd).trim();
 }
 
-function findLineInDict(sub) {
+function findExactMatch(sub) {
+  if (!rawDict) return null;
+
+  // Trad match
+  let searchTrad = '\n' + sub + ' ';
+  let searchIdx = 0;
+  while (true) {
+    let idx = rawDict.indexOf(searchTrad, searchIdx);
+    if (idx === -1) break;
+    let line = extractLine(idx);
+    if (line) return line;
+    searchIdx = idx + 1;
+  }
+
+  if (rawDict.startsWith(sub + ' ')) {
+    let line = extractLine(0);
+    if (line) return line;
+  }
+
+  // Simp match
+  searchIdx = 0;
+  while (true) {
+    let idx = rawDict.indexOf(' ' + sub + ' [', searchIdx);
+    if (idx === -1) break;
+    let line = extractLine(idx);
+    if (line) return line;
+    searchIdx = idx + 1;
+  }
+
+  return null;
+}
+
+function findPartialMatch(sub) {
   if (!rawDict) return null;
 
   let searchIdx = 0;
