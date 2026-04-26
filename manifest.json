@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Pinyin It Out",
+  "version": "0.1",
+  "description": "Shows pinyin on hover.",
+  "permissions": ["storage"],
+  "action": {
+    "default_title": "Toggle Pinyin"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["styles.css"],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "12": "icon12.png",
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "96": "icon96.png",
+    "128": "icon128.png"
+  }
+}

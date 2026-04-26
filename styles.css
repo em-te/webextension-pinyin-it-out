@@ -1,0 +1,50 @@
+.pinyin-extension-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 5px;
+  z-index: 2147483647;
+  backdrop-filter: blur(10px);
+  border-radius: 4px;
+  border: 0.5px solid #ffffff11;
+  outline: 0.5px solid #00000022;
+
+  font-family: georgia, cambria, "times new roman", times, serif;
+  font-size: 12px;
+  line-height: 1;
+
+  color: transparent;
+  background: linear-gradient(0deg, #ddd, #888, #ddd);
+  background-clip: text;
+  mix-blend-mode: difference;
+
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  text-align: start;
+  gap: 0.2em 2em;
+
+  max-width: 300px;
+  transition: opacity 0.3s;
+
+  &:not(.visible) {
+    opacity: 0;
+  }
+
+  .pinyin-sound {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .pinyin-word {
+    letter-spacing: 0.25em;
+  }
+
+  &:not(.altkey) .pinyin-explain {
+    display: none;
+  }
+
+  &.shiftkey.ctrlkey {
+    top: 50%;
+  }
+}
