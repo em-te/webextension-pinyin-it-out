@@ -1,21 +1,72 @@
 let isActive = true;
 let rawDict = "";
+let offAfterDate = null;
 
-const ready = fetch(chrome.runtime.getURL("cedict_ts.u8"))
+fetch(chrome.runtime.getURL("cedict_ts.u8"))
   .then(response => response.text())
   .then(text => {
     rawDict = text;
   })
   .catch(err => console.error("Failed to load dictionary:", err));
 
-chrome.storage.local.get(["isActive"], result => {
-  isActive = result.isActive !== undefined ? result.isActive : true;
+chrome.storage.local.get(["isActive", "offAfterDate"], result => {
+  isActive = result.isActive !== false;
+  offAfterDate = result.offAfterDate;
+  checkAndUpdateStatus();
   updateIcon();
 });
 
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "10min",
+    title: "On for 10 min",
+    contexts: ["action"],
+  });
+  chrome.contextMenus.create({
+    id: "30min",
+    title: "On for 30 min",
+    contexts: ["action"],
+  });
+  chrome.contextMenus.create({
+    id: "1hour",
+    title: "On for 1 hour",
+    contexts: ["action"],
+  });
+});
+
+chrome.contextMenus.onClicked.addListener(info => {
+  let minutes = 0;
+
+  if (info.menuItemId === "10min") minutes = 10;
+  else if (info.menuItemId === "30min") minutes = 30;
+  else if (info.menuItemId === "1hour") minutes = 60;
+
+  if (minutes) {
+    offAfterDate = Date.now() + minutes * 60000;
+    isActive = true;
+
+    chrome.storage.local.set({
+      isActive: true,
+      offAfterDate,
+    });
+
+    updateIcon();
+  }
+});
+
+function checkAndUpdateStatus() {
+  if (Date.now() >= offAfterDate) {
+    isActive = false;
+    offAfterDate = null;
+    chrome.storage.local.set({ isActive: false, offAfterDate: null });
+    updateIcon();
+  }
+}
+
 chrome.action.onClicked.addListener(tab => {
   isActive = !isActive;
-  chrome.storage.local.set({ isActive });
+  offAfterDate = null;
+  chrome.storage.local.set({ isActive, offAfterDate });
   updateIcon();
 });
 
@@ -27,20 +78,26 @@ function updateIcon() {
 // Handle messages from content script
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.action === "translate") {
+    checkAndUpdateStatus();
+
+    if (!isActive) {
+      sendResponse({ result: null });
+      return;
+    }
+
     const { text, hoverIndex, shiftKey, ctrlKey, altKey } = request;
     if (!text || hoverIndex < 0 || hoverIndex >= text.length) {
       sendResponse({ result: null });
       return;
     }
 
-    ready.then(() => {
-      const { newText, newHoverIndex } = sanitizeInput(text, hoverIndex);
-      const candidates = generateCandidates(newText, newHoverIndex);
-      const foundLine = findMatchingLine(candidates);
-      const bestMatch = foundLine ? parseDictionaryLine(foundLine) : null;
+    const { newText, newHoverIndex } = sanitizeInput(text, hoverIndex);
+    const candidates = generateCandidates(newText, newHoverIndex);
+    const foundLine = findMatchingLine(candidates);
+    const bestMatch = foundLine ? parseDictionaryLine(foundLine) : null;
 
-      sendResponse({ result: bestMatch, shiftKey, ctrlKey, altKey });
-    });
+    sendResponse({ result: bestMatch, shiftKey, ctrlKey, altKey });
+
     return true;
   }
 });
@@ -103,10 +160,17 @@ function parseDictionaryLine(line) {
   return null;
 }
 
-const TONE_MAP = { 1: "\u0304", 2: "\u0301", 3: "\u030c", 4: "\u0300", 5: "" };
+const TONE_MAP = {
+  1: "\u0304",
+  2: "\u0301",
+  3: "\u030c",
+  4: "\u0300",
+  5: "",
+  ":": "\u0308",
+};
 
 function tonesToDiacritics(pinyin) {
-  return pinyin.replace(/[1-5]/g, m => TONE_MAP[m]);
+  return pinyin.replace(/[1-5:]/g, m => TONE_MAP[m]);
 }
 
 function extractLine(idx) {
