@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Pinyin It Out",
   "version": "0.1",
-  "description": "Shows pinyin on hover.",
+  "description": "Peep the pinyin in the upper corner on hover. Push alt pops meaning. Push shift and control hitches to middle.",
   "permissions": ["storage"],
   "action": {
     "default_title": "Toggle Pinyin"
