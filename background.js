@@ -1,7 +1,7 @@
 let isActive = true;
 let rawDict = "";
 
-fetch(chrome.runtime.getURL("cedict_ts.u8"))
+const ready = fetch(chrome.runtime.getURL("cedict_ts.u8"))
   .then(response => response.text())
   .then(text => {
     rawDict = text;
@@ -20,12 +20,12 @@ chrome.action.onClicked.addListener(tab => {
 });
 
 function updateIcon() {
-  const text = isActive ? "福" : "";
+  const text = isActive ? "の" : "";
   chrome.action.setBadgeText({ text });
 }
 
 // Handle messages from content script
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.action === "translate") {
     const { text, hoverIndex, shiftKey, ctrlKey, altKey } = request;
     if (!text || hoverIndex < 0 || hoverIndex >= text.length) {
@@ -33,28 +33,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return;
     }
 
-    const { newText, newHoverIndex } = sanitizeInput(text, hoverIndex);
-    const candidates = generateCandidates(newText, newHoverIndex);
-    const foundLine = findMatchingLine(candidates);
-    const bestMatch = foundLine ? parseDictionaryLine(foundLine) : null;
+    ready.then(() => {
+      const { newText, newHoverIndex } = sanitizeInput(text, hoverIndex);
+      const candidates = generateCandidates(newText, newHoverIndex);
+      const foundLine = findMatchingLine(candidates);
+      const bestMatch = foundLine ? parseDictionaryLine(foundLine) : null;
 
-    sendResponse({ result: bestMatch, shiftKey, ctrlKey, altKey });
+      sendResponse({ result: bestMatch, shiftKey, ctrlKey, altKey });
+    });
     return true;
   }
 });
 
 function sanitizeInput(text, hoverIndex) {
-  let newText = "";
-  let newHoverIndex = hoverIndex;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i].trim() !== "") {
-      if (i === hoverIndex) newHoverIndex = newText.length;
-      newText += text[i];
-    } else if (i < hoverIndex) {
-      newHoverIndex--;
-    }
-  }
-  return { newText, newHoverIndex };
+  const newHoverIndex = text.slice(0, hoverIndex).replace(/\s+/g, "").length;
+  const newText = text.replace(/\s+/g, "");
+
+  return {
+    newText,
+    newHoverIndex,
+  };
 }
 
 function generateCandidates(text, hoverIndex) {
@@ -105,13 +103,10 @@ function parseDictionaryLine(line) {
   return null;
 }
 
+const TONE_MAP = { 1: "\u0304", 2: "\u0301", 3: "\u030c", 4: "\u0300", 5: "" };
+
 function tonesToDiacritics(pinyin) {
-  return pinyin
-    .replaceAll("1", String.fromCharCode(0x0304))
-    .replaceAll("2", String.fromCharCode(0x0301))
-    .replaceAll("3", String.fromCharCode(0x030c))
-    .replaceAll("4", String.fromCharCode(0x0300))
-    .replaceAll("5", "");
+  return pinyin.replace(/[1-5]/g, m => TONE_MAP[m]);
 }
 
 function extractLine(idx) {
