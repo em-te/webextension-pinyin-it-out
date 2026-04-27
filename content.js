@@ -104,8 +104,6 @@ document.addEventListener("mousemove", e => {
 
   clearTimeout(hoverTimer);
 
-  if (e.target === popup) return;
-
   if (popup && !(e.shiftKey || e.ctrlKey)) {
     popup.classList.remove("visible");
   }
@@ -143,7 +141,7 @@ document.addEventListener("mousemove", e => {
               altKey: e.altKey || e.metaKey,
             },
             resp => {
-              if (resp) {
+              if (resp?.result) {
                 showPopup(resp);
               }
             },
