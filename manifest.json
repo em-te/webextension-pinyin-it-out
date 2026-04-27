@@ -3,7 +3,7 @@
   "name": "Pinyin It Out",
   "version": "0.1",
   "description": "Peep the pinyin in the upper corner on hover. Push alt pops meaning. Push shift and control hitches to middle.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "contextMenus"],
   "action": {
     "default_title": "Toggle Pinyin"
   },
