@@ -55,7 +55,7 @@ chrome.contextMenus.onClicked.addListener(info => {
 });
 
 function checkAndUpdateStatus() {
-  if (Date.now() >= offAfterDate) {
+  if (offAfterDate && Date.now() >= offAfterDate) {
     isActive = false;
     offAfterDate = null;
     chrome.storage.local.set({ isActive: false, offAfterDate: null });
