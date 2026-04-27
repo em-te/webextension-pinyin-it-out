@@ -4,8 +4,8 @@
   right: 20px;
   padding: 5px;
   z-index: 2147483647;
-  backdrop-filter: blur(10px);
-  border-radius: 4px;
+  backdrop-filter: blur(4px);
+  border-radius: 10px;
   border: 0.5px solid #ffffff11;
   outline: 0.5px solid #00000022;
 
@@ -13,10 +13,12 @@
   font-size: 12px;
   line-height: 1;
 
-  color: transparent;
-  background: linear-gradient(0deg, #ddd, #888, #ddd);
-  background-clip: text;
-  mix-blend-mode: difference;
+  color: #ffffff44;
+  text-shadow: 1px 1px 0 #00000066;
+  mask:
+    linear-gradient(0deg, transparent, #fff 3px, #fff calc(100% - 3px), transparent),
+    linear-gradient(90deg, transparent, #fff 3px, #fff calc(100% - 3px), transparent);
+  mask-composite: intersect;
 
   display: flex;
   flex-flow: row wrap;
@@ -25,10 +27,14 @@
   gap: 0.2em 2em;
 
   max-width: 300px;
-  transition: opacity 0.3s;
+  transition: opacity 0.1s;
 
   &:not(.visible) {
     opacity: 0;
+  }
+
+  &.visible {
+    transition-duration: 0.3s;
   }
 
   .pinyin-sound {
