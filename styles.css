@@ -16,8 +16,20 @@
   color: #ffffff44;
   text-shadow: 1px 1px 0 #00000066;
   mask:
-    linear-gradient(0deg, transparent, #fff 3px, #fff calc(100% - 3px), transparent),
-    linear-gradient(90deg, transparent, #fff 3px, #fff calc(100% - 3px), transparent);
+    linear-gradient(
+      0deg,
+      transparent,
+      #fff 3px,
+      #fff calc(100% - 3px),
+      transparent
+    ),
+    linear-gradient(
+      90deg,
+      transparent,
+      #fff 3px,
+      #fff calc(100% - 3px),
+      transparent
+    );
   mask-composite: intersect;
 
   display: flex;
@@ -35,6 +47,10 @@
 
   &.visible {
     transition-duration: 0.3s;
+  }
+
+  &:hover {
+    backdrop-filter: none;
   }
 
   .pinyin-sound {
