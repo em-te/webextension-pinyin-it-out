@@ -2,19 +2,19 @@
   position: fixed;
   top: 20px;
   right: 20px;
-  padding: 5px;
+  padding: 7px;
   z-index: 2147483647;
   backdrop-filter: blur(4px);
   border-radius: 10px;
-  border: 0.5px solid #ffffff11;
-  outline: 0.5px solid #00000022;
+  /*border: 0.5px solid #ffffff11;
+  outline: 0.5px solid #00000022;*/
 
-  font-family: georgia, cambria, "times new roman", times, serif;
+  font-family: "times new roman", times, serif;
   font-size: 12px;
   line-height: 1;
 
   color: #ffffff44;
-  text-shadow: 1px 1px 0 #00000066;
+  text-shadow: 1px 1px 1px #00000066;
   mask:
     linear-gradient(
       0deg,
@@ -69,5 +69,10 @@
 
   &.shiftkey.ctrlkey {
     top: 50%;
+  }
+
+  &.shiftkey.ctrlkey.altkey {
+    color: #eee;
+    text-shadow: 1px 1px 0 #111;
   }
 }

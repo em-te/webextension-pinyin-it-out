@@ -77,6 +77,14 @@ function getTextContentAroundCaret(node, offset) {
   };
 }
 
+function getTextAroundIndex(text, offset) {
+  const start = Math.max(0, offset - 3);
+  return {
+    text: text.substring(start, start + 6),
+    hoverIndex: offset - start,
+  };
+}
+
 function getPreviousTextNode(node) {
   let walker = document.createTreeWalker(
     document.body,
@@ -109,47 +117,56 @@ document.addEventListener("mousemove", e => {
   }
 
   hoverTimer = setTimeout(() => {
-    let range, textNode, offset;
+    let range, node, offset;
 
     // Firefox
     if (document.caretPositionFromPoint) {
       const position = document.caretPositionFromPoint(e.clientX, e.clientY);
       if (position) {
-        textNode = position.offsetNode;
+        node = position.offsetNode;
         offset = position.offset;
       }
     } else if (document.caretRangeFromPoint) {
       range = document.caretRangeFromPoint(e.clientX, e.clientY);
       if (range) {
-        textNode = range.startContainer;
+        node = range.startContainer;
         offset = range.startOffset;
       }
     }
 
-    if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-      const char = textNode.textContent[offset];
+    let context;
+
+    if (node?.nodeType === Node.TEXT_NODE) {
+      const char = node.textContent[offset];
       if (char && isChinese(char)) {
-        const context = getTextContentAroundCaret(textNode, offset);
-        if (context) {
-          chrome.runtime.sendMessage(
-            {
-              action: "translate",
-              text: context.text,
-              hoverIndex: context.hoverIndex,
-              shiftKey: e.shiftKey,
-              ctrlKey: e.ctrlKey,
-              altKey: e.altKey || e.metaKey,
-            },
-            resp => {
-              if (resp?.result) {
-                showPopup(resp);
-              }
-            },
-          );
-        }
+        context = getTextContentAroundCaret(node, offset);
+      }
+    } else if (
+      node?.nodeType === Node.ELEMENT_NODE &&
+      typeof node.value === "string"
+    ) {
+      const char = node.value[offset];
+      if (char && isChinese(char)) {
+        context = getTextAroundIndex(node.value, offset);
       }
     }
-  }, 100); // Debounce
+
+    if (context) {
+      chrome.runtime.sendMessage(
+        {
+          action: "translate",
+          text: context.text,
+          hoverIndex: context.hoverIndex,
+          shiftKey: e.shiftKey,
+          ctrlKey: e.ctrlKey,
+          altKey: e.altKey || e.metaKey,
+        },
+        resp => {
+          if (resp?.result) showPopup(resp);
+        },
+      );
+    }
+  }, 50); // Debounce
 });
 
 function showPopup({ result, shiftKey, ctrlKey, altKey }) {
