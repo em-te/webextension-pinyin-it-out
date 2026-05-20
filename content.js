@@ -141,13 +141,15 @@ document.addEventListener("mousemove", e => {
       if (char && isChinese(char)) {
         context = getTextContentAroundCaret(node, offset);
       }
-    } else if (
-      node?.nodeType === Node.ELEMENT_NODE &&
-      typeof node.value === "string"
-    ) {
-      const char = node.value[offset];
-      if (char && isChinese(char)) {
-        context = getTextAroundIndex(node.value, offset);
+    } else if (node?.nodeType === Node.ELEMENT_NODE) {
+      if (node instanceof HTMLSelectElement) {
+        const text = node.selectedOptions[0]?.text;
+        if (text && isChinese(text[0])) context = { text, hoverIndex: 0 };
+      } else if (typeof node.value === "string") {
+        const char = node.value[offset];
+        if (char && isChinese(char)) {
+          context = getTextAroundIndex(node.value, offset);
+        }
       }
     }
 
@@ -188,9 +190,7 @@ function showPopup({ result, shiftKey, ctrlKey, altKey }) {
   explain.dataset.value = eng;
 
   popup.classList.add("visible");
-  popup.classList[shiftKey ? "add" : "remove"]("shiftkey");
-  popup.classList[ctrlKey ? "add" : "remove"]("ctrlkey");
-  popup.classList[altKey ? "add" : "remove"]("altkey");
+  updateClasses({ shiftKey, ctrlKey, altKey });
 }
 
 function createPopup() {
@@ -202,5 +202,19 @@ function createPopup() {
   popup.appendChild(document.createElement("div")).className = "pinyin-word";
   popup.appendChild(document.createElement("div")).className = "pinyin-explain";
 
+  popup.ondblclick = () => {
+    popup.classList.remove("visible");
+  };
   document.body.appendChild(popup);
 }
+
+function updateClasses(e) {
+  if (!popup) return;
+  const list = popup.classList;
+  list.toggle("shift", !!e.shiftKey);
+  list.toggle("ctrl", !!e.ctrlKey);
+  list.toggle("alt", !!(e.altKey || e.metaKey));
+}
+
+document.addEventListener("keydown", updateClasses);
+document.addEventListener("keyup", updateClasses);

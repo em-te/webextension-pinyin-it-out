@@ -63,15 +63,15 @@
     letter-spacing: 0.25em;
   }
 
-  &:not(.altkey) .pinyin-explain {
+  &:not(.alt) .pinyin-explain {
     display: none;
   }
 
-  &.shiftkey.ctrlkey {
+  &.shift.ctrl {
     top: 50%;
   }
 
-  &.shiftkey.ctrlkey.altkey {
+  &.shift.ctrl.alt {
     color: #eee;
     text-shadow: 1px 1px 0 #111;
   }
